@@ -1,0 +1,60 @@
+/* top to bottom */
+
+/* Navigation */
+
+html{
+    background-color: #0b1216;
+}
+
+body{
+    color:white;
+}
+
+nav{
+    display:flex;
+    align-items: center;
+    background-color: #203354;
+    color: white;
+    height: 7.5vh;
+}
+
+#search{
+    margin: 0px auto;
+}
+
+#searchbar{
+    width: 50vw;
+    border-radius: 5apx;
+    padding: 10px;
+    outline: none;
+}
+
+/* body */
+
+main{
+    background-color: #0b1216;
+}
+
+.container{
+    margin-left: 12.5vw;
+    margin-right: 12.5vw;
+}
+
+.row{
+    display:flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+
+/* card */
+
+.card{
+    display:flex;
+    height: 25vh;
+    width: 20vw;
+}
+
+.card-details{
+    margin-left: 1rem;
+}
