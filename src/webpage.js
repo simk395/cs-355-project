@@ -1,3 +1,4 @@
+// generates a card with anime info
 function generate_card(anime){
     let genres = '';
     for(let i = 0; i < 4; i++){
@@ -18,6 +19,7 @@ function generate_card(anime){
     return card + img + details + title + score + genre + close_div + close_div;
 }
 
+// groups 3 cards together into one container
 function generate_rows(cards){
     let rows = [];
     let count = 0;
@@ -40,6 +42,7 @@ function generate_rows(cards){
     return rows;
 }
 
+// generates a container with multiple quotes
 function generate_quotes(quotes){
     if(quotes.error){
         return ""
@@ -56,6 +59,7 @@ function generate_quotes(quotes){
     return head + tail;
 }
 
+// generate html document
 function generate_webpage(animes, quotes){
     animes = animes.filter(anime => !anime.genres.includes("Hentai"));
     let cards = animes.map(anime => generate_card(anime));
@@ -105,10 +109,3 @@ let html_tail =  `
 }
 
 module.exports = generate_webpage;
-
-// <h1>Quotes from this Anime</h1>
-// <div>
-//     <h2>"Because of the existence of love - sacrifice is born. As well as hate. Then one comprehends... one knows PAIN." - Pain</h2>
-//     <br>
-//     <h2>"Physical wounds will definitely bleed and may look painful <br>but over time they heal by themselves and if you apply medicine, <br>they will heal faster. What's troublesome are wounds of the heart. Nothing is harder to heal. They're a bit different from physical injuries. You can't apply medicine for one thing and sometimes, they never heal. There's only one cure for a wound of the heart. \nIt's a bit bothersome and you can only receive it from someone else. What is it? Love." - Yashamaru</h2>
-// </div>

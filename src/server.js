@@ -27,16 +27,23 @@ function create_access_token_cache(aniapi_auth){
     })
 }
 
-// concat chunks being transmitted then return it as a whole
-function stream_to_message(stream, callback){
-    let body = '';
-    stream.on("data", chunk => body += chunk);
-    stream.on("end", () => callback(body));
-}
-
 // handle server requests
 app.on("request", connection_handler);
 function connection_handler(req, res){
+
+    // concat chunks being transmitted then return it as a whole
+    function stream_to_message(stream, callback){
+        let body = '';
+        stream.on("data", chunk => body += chunk);
+        stream.on("end", () => callback(body));
+    }
+
+    // send client to AniApi auth page
+    function send_to_auth(){
+        const url = "https://api.aniapi.com/v1/oauth?response_type=code&client_id=59d7f5ac-d9e7-43e3-af84-bd7c0194411b&redirect_uri=http://localhost:8080/auth"
+        res.writeHead(302, {"Location": url})
+        res.end();
+    }
 
     // home
     if(req.url === "/"){
@@ -44,6 +51,7 @@ function connection_handler(req, res){
             method: "GET"
         }
 
+        // Line 55 - 60: get current season and year
         let date = new Date();
         let month = date.getMonth();
         let year = date.getFullYear();
@@ -51,9 +59,11 @@ function connection_handler(req, res){
         let quarter = Math.floor(month/3);
         let season = seasons[quarter];
 
+        // request to AniApi with query parameters year and season
         const ani_api = `https://api.aniapi.com/v1/anime?year=${year}&season=${season}`;
         const search_request = https.request(ani_api, ani_api_options);
 
+        // Line 66 - 76: parse the anime info from the AniApi response and then request for animechan
         search_request.once("response", search_request_stream_message => {
             stream_to_message(search_request_stream_message, search_request_message => {
                 let ani_api_response = JSON.parse(search_request_message);
@@ -63,7 +73,8 @@ function connection_handler(req, res){
                     const animechan_options = {
                         method: "GET"
                     }
-
+                    
+                    // parse quotes data from animechan and then generate a webpage to be sent to the client
                     const search_quotes = https.request(animechan, animechan_options);
                     search_quotes.once("response", search_quotes_stream_message => {
                         stream_to_message(search_quotes_stream_message, search_quotes_message => {
@@ -73,6 +84,11 @@ function connection_handler(req, res){
                         })
                     })
                     search_quotes.end();
+                }else{
+                    // if it didnt work then just send them a homepage without any animes rendered
+                    const index = fs.createReadStream("../index.html");
+                    res.writeHead(200, {'Content-Type': mime_type.html});
+                    index.end(res);
                 }
             })
         })
@@ -95,22 +111,22 @@ function connection_handler(req, res){
 
     // search
     else if(req.url.startsWith("/search")){
-        const url = "https://api.aniapi.com/v1/oauth?response_type=code&client_id=59d7f5ac-d9e7-43e3-af84-bd7c0194411b&redirect_uri=http://localhost:8080/auth"
+        // save what the client is searching for
         const search_title = new URL("http://localhost:8080" + req.url)
             .search
             .slice(3)
             .replace("+", "%20");
 
+        // check for a authentication cache file
         fs.readFile(path.cache, 'utf8', (err, data) => {
             // if there is not authentication data then redirect to auth page
             if(err){
-                res.writeHead(302, {"Location": url})
-                res.end();
+                send_to_auth();
                 return;
             }
-            let auth = JSON.parse(data);
 
-            // if auth is successful make request to anime search endpoint
+            // if auth is successful make request to AniApi search endpoint
+            let auth = JSON.parse(data);
             if(auth.status_code === 200){
                 const ani_api_options = {
                     method: "GET",
@@ -119,8 +135,11 @@ function connection_handler(req, res){
                     }
                 }
 
+                // Use search from client as a query paramenter for title
                 const ani_api = 'https://api.aniapi.com/v1/anime?title=' + search_title;
                 const search_request = https.request(ani_api, ani_api_options);
+
+                // parse AniApi response data (anime info). Sort the data to oldest to newest then save the first one
                 search_request.once("response", search_request_stream_message => {
                     stream_to_message(search_request_stream_message, search_request_message => {
                         let ani_api_response = JSON.parse(search_request_message);
@@ -129,12 +148,12 @@ function connection_handler(req, res){
                             const ani_api_data = ani_api_response.data.documents.sort( (first, second) => first.mal_id - second.mal_id );
                             let title = ani_api_data[0].titles.en;
                             
-                            // when ani_api_response is parsed then use it to request animechan api
+                            // use title from first anime as query parameter for anime to get quotes from
                             const animechan = 'https://animechan.vercel.app/api/quotes/anime?title=' + title;
                             const animechan_options = {
                                 method: "GET"
                             }
-
+                            
                             const search_quotes = https.request(animechan, animechan_options);
                             search_quotes.once("response", search_quotes_stream_message => {
                                 stream_to_message(search_quotes_stream_message, search_quotes_message => {
@@ -146,7 +165,11 @@ function connection_handler(req, res){
                                 })
                             })
                             search_quotes.end();
-                    }else{
+                    }
+                    else if( ani_api_response.status_code === 401){
+                        send_to_auth();
+                    }
+                    else{
                         // send them a no results found page if aniapi doesnt find anything
                         const no_results = fs.createReadStream("../search.html");
                         res.writeHead(200, {'Content-Type': mime_type.html});
@@ -158,8 +181,7 @@ function connection_handler(req, res){
 
             }else{
                 // if not authorized then send them to auth page
-                res.writeHead(302, {"Location": url});
-                res.end();
+                send_to_auth();
             }
         })
     }
