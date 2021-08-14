@@ -95,7 +95,7 @@ function generate_webpage(animes, quotes){
         </nav>
         <main>
             <div class="container">  
-                <h1>Search Result</h1>           
+                <h1>Animes</h1>           
 `    
 rows.forEach(row => html += row);
 
